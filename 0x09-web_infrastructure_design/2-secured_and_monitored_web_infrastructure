@@ -1,186 +1,49 @@
-# Secured and Monitored Web Infrastructure
+# Whiteboard Design – Secured & Monitored Three-Server Web Infrastructure
+![Alt text](2-secured_and_monitored_web_infrastructure.png "One Server Web Infrastructure")
+## Step-by-step request flow
 
-## Overview
-This document describes a three-server web infrastructure that hosts www.foobar.com with enhanced security, encrypted traffic (HTTPS), and comprehensive monitoring capabilities.
+1. **User opens** `https://www.foobar.com` in their browser.
+2. **DNS resolution** returns the IP address of the **Load Balancer**.
+3. Traffic first passes through **Firewall #1** (perimeter firewall).
+4. **Load Balancer (HAProxy)** receives HTTPS requests.
+   - **SSL Certificate** is installed here to encrypt traffic between user and LB.
+5. LB forwards traffic (over HTTPS) to **App Server 1** or **App Server 2** based on load-balancing algorithm.
+6. Each application server:
+   - Runs **Nginx Web Server** + **Application Server**.
+   - Communicates with **MySQL Database** (Primary-Replica setup) after passing **Firewall #2** (DB firewall).
+7. **Monitoring Clients** on each server send metrics and logs to a monitoring service (e.g., Sumo Logic).
+8. Data is returned to the LB → passes through **Firewall #3** (host-based firewall) → user.
 
-## Infrastructure Components
+---
 
-### User Access Flow
-1. User types www.foobar.com in their browser
-2. DNS resolves to Load Balancer IP address
-3. Browser establishes HTTPS connection with SSL certificate
-4. Load Balancer distributes traffic across web servers
-5. Web servers process requests and interact with database
-6. Monitoring clients collect data from all components
+## Why each additional element is added
 
-## Infrastructure Diagram
-```
-[User's Computer] 
-       |
-   [Internet]
-       |
-   [DNS Server] --> resolves www.foobar.com
-       |
-[Load Balancer + SSL Certificate]
-   [Firewall 1]
-       |
-   ┌───────────────────────────────────┐
-   │                                   │
-[Server 1]                        [Server 2]
-[Firewall 2]                      [Firewall 3]
-├── Web Server (Nginx)            ├── Web Server (Nginx)
-├── Application Server            ├── Application Server  
-├── Monitoring Client 1           ├── Monitoring Client 2
-└── Database (MySQL - Master)     └── Database (MySQL - Slave)
-                                       │
-                                  [Server 3]
-                                  ├── Database (MySQL - Master)
-                                  └── Monitoring Client 3
-```
+- **3 Firewalls**:  
+  - **Firewall #1 (Perimeter)**: Blocks unauthorized external traffic.  
+  - **Firewall #2 (Database)**: Restricts DB access to application servers only.  
+  - **Firewall #3 (Host-based)**: Controls traffic in/out of individual servers.
+- **SSL Certificate**: Encrypts traffic between users and servers to prevent data interception.
+- **Monitoring Clients**: Collect performance data, logs, and security alerts for real-time insight.
 
-## Additional Elements and Justifications
+---
 
-### 3 Firewalls
-**Why Added**: 
-- **Firewall 1** (Load Balancer level): Filters incoming traffic before it reaches internal infrastructure
-- **Firewall 2 & 3** (Server level): Provide additional security layers for individual servers
-- Creates defense in depth security architecture
-- Protects against various attack vectors (DDoS, port scanning, unauthorized access)
+## Purpose of Key Security & Monitoring Features
 
-**What Firewalls Do**:
-- Filter network traffic based on predefined rules
-- Block malicious IP addresses and suspicious traffic patterns
-- Control which ports and protocols are accessible
-- Monitor and log network activity for security analysis
-- Prevent unauthorized access to internal network resources
+- **Firewalls**: Filter and block unauthorized access, mitigate attacks.
+- **HTTPS (SSL)**: Secures data in transit, protects sensitive information from being read or modified.
+- **Monitoring**: Detects failures, performance drops, and suspicious activities.
+- **Data Collection Method**: Monitoring agents collect logs, metrics, and events, sending them securely to a central dashboard.
+- **To Monitor Web Server QPS**:  
+  - Enable Nginx `stub_status` or integrate with Prometheus exporters.  
+  - Set up alerts in the monitoring service when QPS exceeds thresholds.
 
-### SSL Certificate for HTTPS
-**Why Added**:
-- Encrypts data transmission between user and server
-- Provides authentication that users are connecting to the legitimate website
-- Required for modern web security standards
-- Improves SEO rankings and user trust
-- Protects sensitive data (passwords, personal information, payment details)
+---
 
-**Why Traffic is Served Over HTTPS**:
-- **Data Encryption**: Prevents eavesdropping and man-in-the-middle attacks
-- **Data Integrity**: Ensures data isn't modified during transmission
-- **Authentication**: Verifies the website's identity to users
-- **Compliance**: Required by many regulations (PCI DSS, GDPR)
-- **User Trust**: Modern browsers mark HTTP sites as "not secure"
+## Issues with This Infrastructure
 
-### 3 Monitoring Clients
-**Why Added**:
-- Provides comprehensive visibility into system performance
-- Enables proactive issue detection and resolution
-- Collects metrics from all infrastructure components
-- Supports capacity planning and optimization
-- Ensures high availability and performance
-
-**What Monitoring is Used For**:
-- **Performance Monitoring**: Track response times, throughput, and resource usage
-- **Error Tracking**: Identify and alert on application errors and failures
-- **Security Monitoring**: Detect suspicious activities and potential breaches
-- **Capacity Planning**: Analyze trends to predict scaling needs
-- **Compliance**: Generate reports for regulatory requirements
-
-## Monitoring Data Collection
-
-### How Monitoring Tool Collects Data
-1. **Agent-based Collection**: Monitoring clients (agents) installed on each server
-2. **Metrics Gathering**: Agents collect system metrics (CPU, memory, disk, network)
-3. **Log Aggregation**: Application and system logs are parsed and forwarded
-4. **API Integration**: Direct integration with applications for custom metrics
-5. **Network Monitoring**: Traffic analysis and network performance metrics
-6. **Database Monitoring**: Query performance, connection counts, and database health
-
-### Data Types Collected
-- System metrics (CPU, RAM, disk usage, network I/O)
-- Application performance metrics (response times, error rates)
-- Security events and access logs
-- Database performance and query statistics
-- Custom business metrics and KPIs
-
-## Monitoring Web Server QPS (Queries Per Second)
-
-### Steps to Monitor QPS
-1. **Configure Nginx/Apache Logs**: Enable access log with timestamp and response data
-2. **Install Log Analysis Tools**: Use tools like GoAccess, AWStats, or custom scripts
-3. **Set Up Monitoring Dashboard**: Configure Sumologic or similar service to parse logs
-4. **Create QPS Metrics**: Extract request count per second from access logs
-5. **Set Up Alerts**: Configure thresholds for high/low QPS values
-6. **Historical Analysis**: Track QPS trends over time for capacity planning
-
-### Implementation Example
-```bash
-# Nginx configuration for detailed logging
-log_format detailed '$remote_addr - $remote_user [$time_local] '
-                   '"$request" $status $body_bytes_sent '
-                   '"$http_referer" "$http_user_agent" $request_time';
-
-# Monitoring client configuration to parse and send QPS data
-tail -f /var/log/nginx/access.log | awk '{print $4, $7}' | monitoring_agent
-```
-
-## Infrastructure Issues
-
-### SSL Termination at Load Balancer Level
-**Problems**:
-- **Unencrypted Internal Traffic**: Traffic between load balancer and web servers is not encrypted
-- **Security Risk**: Internal network vulnerabilities expose sensitive data
-- **Compliance Issues**: Some regulations require end-to-end encryption
-- **Man-in-the-Middle Attacks**: Possible attacks within internal network
-- **Certificate Management**: Centralized certificate creates single point of failure
-
-**Solutions**:
-- Implement end-to-end encryption (SSL/TLS between all components)
-- Use certificate management systems for distributed certificates
-- Implement network segmentation and internal firewalls
-
-### Single MySQL Write Server
-**Problems**:
-- **Single Point of Failure**: If master database fails, no writes are possible
-- **Performance Bottleneck**: All write operations go through one server
-- **Limited Scalability**: Cannot scale write operations horizontally
-- **Data Loss Risk**: Potential for data loss if master fails before replication
-- **Maintenance Downtime**: Updates require taking the write server offline
-
-**Solutions**:
-- Implement MySQL clustering or Galera cluster for multi-master setup
-- Use database sharding for horizontal scaling
-- Implement proper backup and recovery procedures
-- Consider MySQL Group Replication for automatic failover
-
-### Identical Server Components Issue
-**Problems**:
-- **Resource Competition**: Database, web server, and application server compete for same resources
-- **Security Risk**: Compromise of one component affects all others on same server
-- **Scalability Limitations**: Cannot scale individual components independently
-- **Maintenance Complexity**: Updates require coordinating multiple services
-- **Performance Issues**: Heavy database operations can impact web server performance
-- **Single Point of Failure**: Server failure affects multiple services simultaneously
-
-**Solutions**:
-- Implement service separation (dedicated database servers, web servers, app servers)
-- Use containerization (Docker) for service isolation
-- Implement microservices architecture
-- Use dedicated database cluster separate from web/app servers
-
-## Additional Security and Monitoring Considerations
-
-### Enhanced Security Measures
-- Regular security audits and penetration testing
-- Intrusion Detection Systems (IDS) and Intrusion Prevention Systems (IPS)
-- Web Application Firewall (WAF) for application-layer protection
-- Regular security updates and patch management
-- Access control and authentication systems
-
-### Advanced Monitoring Features
-- Real-time alerting and notification systems
-- Automated incident response and remediation
-- Performance baseline establishment and anomaly detection
-- Distributed tracing for complex request flows
-- Business intelligence and analytics integration
-
-## Conclusion
-This secured and monitored infrastructure provides significant improvements over a simple web stack through defense-in-depth security, encrypted communications, and comprehensive monitoring. However, the identified issues highlight the need for careful architecture planning to avoid single points of failure and ensure optimal performance and security.
+1. **SSL Termination at the Load Balancer**:  
+   - Traffic between LB and backend servers might be unencrypted, creating internal security risks.
+2. **Only One Writable MySQL Server**:  
+   - A failure in the Primary DB stops all writes, even if replicas are healthy.
+3. **All Servers Have Same Components**:  
+   - Increases resource waste and potential attack surface; also makes scaling database separately from app/web layers harder.
