@@ -1,5 +1,5 @@
 ## **Whiteboard Design – One Server Web Infrastructure**
-![Alt text](0-simple_web_stack "One Server Web Infrastructure")
+![Alt text](0-simple_web_stack.png "One Server Web Infrastructure")
 ### **Step-by-step request flow**
 
 1. **A user opens** their browser and types `www.foobar.com`.
