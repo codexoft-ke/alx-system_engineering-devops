@@ -1,0 +1,94 @@
+# Simple Web Stack Infrastructure
+
+## Overview
+This document describes a one-server web infrastructure that hosts the website www.foobar.com using a LAMP stack configuration.
+
+## Infrastructure Components
+
+### User Access Flow
+1. User types www.foobar.com in their browser
+2. Browser performs DNS lookup for www.foobar.com
+3. DNS returns IP address 8.8.8.8
+4. Browser sends HTTP request to server at 8.8.8.8
+5. Server processes request and returns website content
+
+## Infrastructure Diagram
+```
+[User's Computer] 
+       |
+   [Internet]
+       |
+   [DNS Server] --> resolves www.foobar.com to 8.8.8.8
+       |
+[Single Server - IP: 8.8.8.8]
+├── Web Server (Nginx)
+├── Application Server 
+├── Application Files (Code Base)
+└── Database (MySQL)
+```
+
+## Component Explanations
+
+### What is a Server?
+A server is a computer system that provides services, data, or resources to other computers (clients) over a network. In this case, it's a physical or virtual machine that hosts all the components needed to serve the website.
+
+### Role of the Domain Name
+The domain name (foobar.com) serves as a human-readable address that maps to the server's IP address (8.8.8.8). It allows users to access the website using memorable names instead of numeric IP addresses.
+
+### DNS Record Type for "www"
+The "www" in www.foobar.com is a CNAME (Canonical Name) record or an A record that points to the server's IP address 8.8.8.8. It's a subdomain that typically indicates the World Wide Web service.
+
+### Role of the Web Server (Nginx)
+- Handles incoming HTTP/HTTPS requests from users
+- Serves static content (HTML, CSS, JavaScript, images)
+- Acts as a reverse proxy to forward dynamic requests to the application server
+- Manages SSL/TLS certificates for secure connections
+- Handles load balancing and caching (when configured)
+
+### Role of the Application Server
+- Executes the application code (business logic)
+- Processes dynamic requests that require computation
+- Interacts with the database to retrieve and store data
+- Generates dynamic content based on user requests
+- Handles user sessions and authentication
+
+### Role of the Database (MySQL)
+- Stores and manages persistent data (user accounts, content, configurations)
+- Provides data integrity and consistency
+- Handles complex queries and data relationships
+- Manages concurrent access to data
+- Provides backup and recovery capabilities
+
+### Server-User Communication Protocol
+The server communicates with the user's computer using the HTTP (HyperText Transfer Protocol) or HTTPS (HTTP Secure) protocol over TCP/IP. This enables the transfer of web pages, images, and other resources from the server to the user's browser.
+
+## Infrastructure Issues
+
+### Single Point of Failure (SPOF)
+- **Problem**: The entire infrastructure depends on one server. If this server fails, the entire website becomes unavailable.
+- **Impact**: Complete service outage until the server is restored.
+
+### Downtime During Maintenance
+- **Problem**: Deploying new code or performing maintenance requires restarting services, causing temporary downtime.
+- **Impact**: Users cannot access the website during deployment or maintenance windows.
+- **Examples**: 
+  - Restarting web server after configuration changes
+  - Database updates requiring service restart
+  - Application code deployment
+
+### Limited Scalability
+- **Problem**: A single server has finite resources (CPU, RAM, storage, bandwidth).
+- **Impact**: Performance degrades as traffic increases, leading to:
+  - Slow response times
+  - Potential server crashes under high load
+  - Poor user experience
+  - Loss of potential customers
+
+### Additional Considerations
+- **Security**: Single server is a concentrated target for attacks
+- **Geographic limitations**: Users far from server location experience higher latency
+- **Resource constraints**: All services compete for the same system resources
+- **Backup limitations**: Single point for data storage increases risk of data loss
+
+## Conclusion
+While this simple web stack is cost-effective and easy to manage for small-scale applications, it has significant limitations in terms of reliability, scalability, and availability. For production environments with higher traffic or availability requirements, a more distributed architecture would be necessary.
